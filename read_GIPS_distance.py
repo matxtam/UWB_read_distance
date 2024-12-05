@@ -1,4 +1,4 @@
-from loc_method import two_stage_solve_trans
+# from loc_method import two_stage_solve_trans
 import serial
 import binascii
 import numpy as np
@@ -6,7 +6,7 @@ import pandas as pd
 import collections
 import time
 import socket
-from fakeGPS import simulate_GPS
+# from fakeGPS import simulate_GPS
 
 def swapEndianness(hexstring):
 	ba = bytearray.fromhex(hexstring)
@@ -15,7 +15,7 @@ def swapEndianness(hexstring):
 
 def UWB_dis():
 
-    COM_PORT = 'COM5'    
+    COM_PORT = '/dev/ttyUSB0'    
     BAUD_RATES = 57600    
     ser_UWB = serial.Serial(COM_PORT, BAUD_RATES) 
     dis_queue = collections.deque(maxlen = 1)
@@ -97,16 +97,18 @@ def _main():
     dis_to_tag_ls = []
     count = 0
     try:
-        while(1):
+        while(count < 100):
 
             dis_to_tag = UWB_dis()
+            print("anchor ID 7:" + str(dis_to_tag[1]))
             if(0 not in dis_to_tag):
                 count = count + 1
 
                 a2_value = dis_to_tag[0] 
                 a3_value = dis_to_tag[1] 
                 a4_value = dis_to_tag[2] 
-                a5_value = dis_to_tag[3] 
+                a5_value = dis_to_tag[3]
+                print('anchor ID 7:' + a3_value) 
                 dis_to_tag = [a2_value, a3_value, a4_value, a5_value]
                 dis_to_tag_ls.append(dis_to_tag)
            
