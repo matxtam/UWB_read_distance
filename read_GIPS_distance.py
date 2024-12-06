@@ -1,4 +1,3 @@
-# from loc_method import two_stage_solve_trans
 import serial
 import binascii
 import numpy as np
@@ -6,91 +5,43 @@ import pandas as pd
 import collections
 import time
 import socket
-# from fakeGPS import simulate_GPS
+const COM_PORT = 'dev/ttyUSB0'  # for rpi
+# const COM_PORT = 'COM0'   # for computer
+const anchor_IDs = ['0241000000000000','0341000000000000','0441000000000000','0541000000000000']
 
 def swapEndianness(hexstring):
 	ba = bytearray.fromhex(hexstring)
-	ba.reverse() 
+	ba.reverse()
 	return ba.hex()
 
 def UWB_dis():
 
-    COM_PORT = '/dev/ttyUSB0'    
     BAUD_RATES = 57600    
     ser_UWB = serial.Serial(COM_PORT, BAUD_RATES) 
     dis_queue = collections.deque(maxlen = 1)
     t = time.time()
-    rx = ser_UWB.read(264)
+    rx = ser_UWB.read(66) # original 264 = 66*4
     rx = binascii.hexlify(rx).decode('utf-8')
-    global dis_1
-    global dis_2
-    global dis_3
-    global dis_4
-    global dis
+    global diss = np.zeros(4)
     
-    if( rx != ' ' and rx.find('0241000000000000') >= 0 and rx.find('0241000000000000') <= (len(rx)-24)):
-        
-        dis_1_index = rx.find('0241000000000000') 
-        dis_1 = rx[dis_1_index + 16 : dis_1_index + 24]
-        dis_time1 = rx[dis_1_index - 18 : dis_1_index - 16]
-        dis_1 = swapEndianness(dis_1)
-        if dis_1 != "":
-            dis_1 = int(dis_1,16)
-            dis_1 = dis_1/100 
-            dis_1 = round(float(dis_1),2)
+    for index, anchor_ID in anchor_IDs:
+        if( rx != ' ' and rx.find(anchor_ID) >= 0 and rx.find(anchor_ID) <= (len(rx)-24)):
+            dis_index = rx.find(anchor_ID) 
+            dis = rx[dis_index + 16 : dis_index + 24] # ToF distance
+            dis = swapEndianness(dis)
+            # dis_time = rx[dis_index - 18 : dis_index - 16]
+
+            if dis != "":
+                dis = int(dis_1,16)
+                if dis >= 65536:      # solve sign
+                    dis = 65536 - dis
+            else:
+               dis = 0
         else:
-           dis_1 = 0
-    else:
-        dis_1 = 0
-    
-    if( rx != ' ' and rx.find('0341000000000000') >= 0 and rx.find('0341000000000000') <= (len(rx)-24)):
+            dis = 0
+        diss[index] = dis
         
-        dis_2_index = rx.find('0341000000000000')
-        dis_2 = rx[dis_2_index + 16 : dis_2_index + 24]
-        dis_time2 = rx[dis_2_index - 18 : dis_2_index - 16]
-        dis_2 = swapEndianness(dis_2)
-        
-        if dis_2 != "":
-            dis_2 = int(dis_2,16)
-            dis_2 = round(dis_2/100,2)
-        else:
-           dis_2 = 0
-    else:
-        dis_2 = 0
-    
-    if( rx != ' ' and rx.find('0441000000000000') >= 0 and rx.find('0441000000000000') <= (len(rx)-24)):
-        
-        dis_3_index = rx.find('0441000000000000')
-        dis_3 = rx[dis_3_index + 16 : dis_3_index + 24]
-        dis_time3 = rx[dis_3_index - 18 : dis_3_index - 16]
-        dis_3 = swapEndianness(dis_3)
-        
-        if dis_3 != "":
-            dis_3 = int(dis_3,16)
-            dis_3 = round(dis_3/100,2)
-        else:
-           dis_3 = 0
-    else:
-        dis_3 = 0
-        
-    if( rx != ' ' and rx.find('0541000000000000') >= 0 and rx.find('0541000000000000') <= (len(rx)-24)):
-        
-        dis_4_index = rx.find('0541000000000000')
-        dis_4 = rx[dis_4_index + 16 : dis_4_index + 24]
-        dis_time4 = rx[dis_4_index - 18 : dis_4_index - 16]
-        dis_4 = swapEndianness(dis_4)
-        
-        if dis_4 != "":
-            dis_4 = int(dis_4,16)
-            dis_4 = round(dis_4/100,2)
-        else :
-           dis_4 = 0
-    else:
-        dis_4 = 0
-        
-    dis = np.array([dis_1, dis_2, dis_3, dis_4])
-    #print('dis',dis)
-    return dis
+    return diss
 
 def _main():
     data_filename = 'UWB_distance.csv'    
@@ -101,6 +52,7 @@ def _main():
 
             dis_to_tag = UWB_dis()
             print("anchor ID 7:" + str(dis_to_tag[1]))
+
             if(0 not in dis_to_tag):
                 count = count + 1
 
