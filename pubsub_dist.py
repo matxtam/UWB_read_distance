@@ -7,18 +7,9 @@ import sys
 import threading
 import time
 import json
-from utils.command_line_utils import CommandLineUtils
+# from utils.command_line_utils import CommandLineUtils
 
-# This sample uses the Message Broker for AWS IoT to send and receive messages
-# through an MQTT connection. On startup, the device connects to the server,
-# subscribes to a topic, and begins publishing messages to that topic.
-# The device should receive those same messages back from the message broker,
-# since it is subscribed to that same topic.
-
-# cmdData is the arguments/input from the command line placed into a single struct for
-# use in this sample. This handles all of the command line parsing, validating, etc.
-# See the Utils/CommandLineUtils for more information.
-cmdData = CommandLineUtils.parse_sample_input_pubsub()
+# cmdData = CommandLineUtils.parse_sample_input_pubsub()
 
 received_count = 0
 received_all_event = threading.Event()
@@ -55,8 +46,8 @@ def on_message_received(topic, payload, dup, qos, retain, **kwargs):
     print("Received message from topic '{}': {}".format(topic, payload))
     global received_count
     received_count += 1
-    if received_count == cmdData.input_count:
-        received_all_event.set()
+    if received_count == 10:
+       received_all_event.set()
 
 # Callback when the connection successfully connects
 def on_connection_success(connection, callback_data):
@@ -72,44 +63,105 @@ def on_connection_failure(connection, callback_data):
 def on_connection_closed(connection, callback_data):
     print("Connection closed")
 
-if __name__ == '__main__':
+class _MQTT_conn:
+    def __init__(self):
+        self.proxy_options = None
+        # Create the proxy options if the data is present in cmdData
+        '''
+        if cmdData.input_proxy_host is not None and cmdData.input_proxy_port != 0:
+            proxy_options = http.HttpProxyOptions(
+                host_name=cmdData.input_proxy_host,
+                port=cmdData.input_proxy_port)
+        '''
+
+        # Create a MQTT connection from the command line data
+        self.conn = mqtt_connection_builder.mtls_from_path(
+            endpoint="a2bubpl3yej6sw-ats.iot.us-east-1.amazonaws.com",
+            port=8883,
+            cert_filepath="./uwb-tag-rpi.cert.pem",
+            pri_key_filepath="./uwb-tag-rpi.private.key",
+            ca_filepath=None,
+            on_connection_interrupted=on_connection_interrupted,
+            on_connection_resumed=on_connection_resumed,
+            client_id="rpi",
+            clean_session=False,
+            keep_alive_secs=30,
+            http_proxy_options=self.proxy_options,
+            on_connection_success=on_connection_success,
+            on_connection_failure=on_connection_failure,
+            on_connection_closed=on_connection_closed)
+        print("Connecting to endpoint with client ID")
+        self.conn_future = self.conn.connect()
+
+        # Future.result() waits until a result is available
+        self.conn_future.result()
+        print("Connected!")
+
+    def subscribe(self, topic):
+        print("Subscribing to topic '{}'...".format(message_topic))
+        self.conn_future, packet_id = mqtt_connection.subscribe(
+            topic=message_topic,
+            qos=mqtt.QoS.AT_LEAST_ONCE,
+            callback=on_message_received)
+
+        subscribe_result = subscribe_future.result()
+        print("Subscribed with {}".format(str(subscribe_result['qos'])))
+
+    def publish(self, message_topic, message):
+        print("Publishing message to topic '{}': {}".format(message_topic, message))
+        message_json = json.dumps(message)
+        mqtt_connection.publish(
+            topic=message_topic,
+            payload=message_json,
+            qos=mqtt.QoS.AT_LEAST_ONCE)
+
+    def disconnect(self):
+        print("Disconnecting...")
+        disconnect_future = self.conn.disconnect()
+        disconnect_future.result()
+        print("Disconnected!")
+
+
+
+def original_main():
+
     # Create the proxy options if the data is present in cmdData
-    proxy_options = None
+    '''
     if cmdData.input_proxy_host is not None and cmdData.input_proxy_port != 0:
         proxy_options = http.HttpProxyOptions(
             host_name=cmdData.input_proxy_host,
             port=cmdData.input_proxy_port)
+    '''
 
     # Create a MQTT connection from the command line data
     mqtt_connection = mqtt_connection_builder.mtls_from_path(
-        endpoint=cmdData.input_endpoint,
-        port=cmdData.input_port,
-        cert_filepath=cmdData.input_cert,
-        pri_key_filepath=cmdData.input_key,
-        ca_filepath=cmdData.input_ca,
+        endpoint="a2bubpl3yej6sw-ats.iot.us-east-1.amazonaws.com",
+        port=8883,
+        cert_filepath="./uwb-tag-rpi.cert.pem",
+        pri_key_filepath="./uwb-tag-rpi.private.key",
+        ca_filepath=None,
         on_connection_interrupted=on_connection_interrupted,
         on_connection_resumed=on_connection_resumed,
-        client_id=cmdData.input_clientId,
+        client_id="rpi",
         clean_session=False,
         keep_alive_secs=30,
-        http_proxy_options=proxy_options,
+        http_proxy_options=self.proxy_options,
         on_connection_success=on_connection_success,
         on_connection_failure=on_connection_failure,
         on_connection_closed=on_connection_closed)
 
-    if not cmdData.input_is_ci:
-        print(f"Connecting to {cmdData.input_endpoint} with client ID '{cmdData.input_clientId}'...")
-    else:
-        print("Connecting to endpoint with client ID")
+    print("Connecting to endpoint with client ID")
     connect_future = mqtt_connection.connect()
 
     # Future.result() waits until a result is available
     connect_future.result()
     print("Connected!")
 
+    '''
     message_count = cmdData.input_count
     message_topic = cmdData.input_topic
     message_string = cmdData.input_message
+    '''
 
     # Subscribe
     print("Subscribing to topic '{}'...".format(message_topic))
@@ -155,3 +207,15 @@ if __name__ == '__main__':
     disconnect_future = mqtt_connection.disconnect()
     disconnect_future.result()
     print("Disconnected!")
+
+def new_main():
+    mqtt = _MQTT_conn()
+    mqtt.subscribe("test/topic")
+    mqtt.publish("test/topic", "my own hello world")
+    while(received_count == 0):
+        pass
+    mqtt.disconnect()
+
+if __name__ == '__main__':
+    #    original_main()
+    new_main()
