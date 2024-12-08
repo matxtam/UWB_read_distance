@@ -83,7 +83,7 @@ class _MQTT_conn:
             ca_filepath=None,
             on_connection_interrupted=on_connection_interrupted,
             on_connection_resumed=on_connection_resumed,
-            client_id="rpi",
+            client_id="test-123",
             clean_session=False,
             keep_alive_secs=30,
             http_proxy_options=self.proxy_options,
@@ -97,9 +97,9 @@ class _MQTT_conn:
         self.conn_future.result()
         print("Connected!")
 
-    def subscribe(self, topic):
+    def subscribe(self, message_topic):
         print("Subscribing to topic '{}'...".format(message_topic))
-        self.conn_future, packet_id = mqtt_connection.subscribe(
+        subscribe_future, packet_id = self.conn.subscribe(
             topic=message_topic,
             qos=mqtt.QoS.AT_LEAST_ONCE,
             callback=on_message_received)
@@ -110,7 +110,7 @@ class _MQTT_conn:
     def publish(self, message_topic, message):
         print("Publishing message to topic '{}': {}".format(message_topic, message))
         message_json = json.dumps(message)
-        mqtt_connection.publish(
+        self.conn.publish(
             topic=message_topic,
             payload=message_json,
             qos=mqtt.QoS.AT_LEAST_ONCE)
