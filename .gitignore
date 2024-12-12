@@ -2,3 +2,6 @@ venv
 venv/**
 **/*~
 uwb-**
+start.sh
+**/**.swp
+.env

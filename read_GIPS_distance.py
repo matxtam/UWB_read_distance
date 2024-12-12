@@ -5,6 +5,7 @@ import pandas as pd
 import collections
 import time
 import socket
+
 const COM_PORT = 'dev/ttyUSB0'  # for rpi
 # const COM_PORT = 'COM0'   # for computer
 const anchor_IDs = ['0241000000000000','0341000000000000','0441000000000000','0541000000000000']
@@ -40,18 +41,17 @@ def UWB_dis():
         else:
             dis = 0
         diss[index] = dis
-        
     return diss
 
+def test():
+
 def _main():
-    data_filename = 'UWB_distance.csv'    
     dis_to_tag_ls = []
     count = 0
     try:
         while(count < 100):
 
             dis_to_tag = UWB_dis()
-            print("anchor ID 7:" + str(dis_to_tag[1]))
 
             if(0 not in dis_to_tag):
                 count = count + 1
